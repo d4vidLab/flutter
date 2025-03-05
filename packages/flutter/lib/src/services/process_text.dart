@@ -24,9 +24,7 @@ class ProcessTextAction {
       return true;
     }
 
-    return other is ProcessTextAction &&
-      other.id == id &&
-      other.label == label;
+    return other is ProcessTextAction && other.id == id && other.label == label;
   }
 
   @override
@@ -68,10 +66,10 @@ abstract class ProcessTextService {
 ///       ...
 ///     </application>
 ///     <!-- Required to query activities that can process text, see:
-///           https://developer.android.com/training/package-visibility?hl=en and
-///           https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
+///          https://developer.android.com/training/package-visibility and
+///          https://developer.android.com/reference/android/content/Intent#ACTION_PROCESS_TEXT.
 ///
-///           In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
+///          In particular, this is used by the Flutter engine in io.flutter.plugin.text.ProcessTextPlugin. -->
 ///     <queries>
 ///         <intent>
 ///             <action android:name="android.intent.action.PROCESS_TEXT"/>
@@ -113,32 +111,39 @@ class DefaultProcessTextService implements ProcessTextService {
 
   @override
   Future<List<ProcessTextAction>> queryTextActions() async {
-    final List<ProcessTextAction> textActions = <ProcessTextAction>[];
-    final Map<Object?, Object?>? rawResults;
+    final Map<Object?, Object?> rawResults;
 
     try {
-      rawResults = await _processTextChannel.invokeMethod(
-        'ProcessText.queryTextActions',
-      ) as Map<Object?, Object?>;
+      final Map<Object?, Object?>? result =
+          await _processTextChannel.invokeMethod('ProcessText.queryTextActions')
+              as Map<Object?, Object?>?;
+
+      if (result == null) {
+        return <ProcessTextAction>[];
+      }
+
+      rawResults = result;
     } catch (e) {
-      return textActions;
+      return <ProcessTextAction>[];
     }
 
-    for (final Object? id in rawResults.keys) {
-      textActions.add(ProcessTextAction(id! as String, rawResults[id]! as String));
-    }
-
-    return textActions;
+    return <ProcessTextAction>[
+      for (final Object? id in rawResults.keys)
+        ProcessTextAction(id! as String, rawResults[id]! as String),
+    ];
   }
 
   @override
   /// On Android, the readOnly parameter might be used by the targeted activity, see:
   /// https://developer.android.com/reference/android/content/Intent#EXTRA_PROCESS_TEXT_READONLY.
   Future<String?> processTextAction(String id, String text, bool readOnly) async {
-    final String? processedText = await _processTextChannel.invokeMethod(
-      'ProcessText.processTextAction',
-      <dynamic>[id, text, readOnly],
-    ) as String?;
+    final String? processedText =
+        await _processTextChannel.invokeMethod('ProcessText.processTextAction', <dynamic>[
+              id,
+              text,
+              readOnly,
+            ])
+            as String?;
 
     return processedText;
   }
